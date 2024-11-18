@@ -31,7 +31,11 @@ bot = Client(
 
 @bot.on_message(filters.command(["start"]))
 async def account_login(bot: Client, m: Message):
-    editable = await m.reply_text(f"Hello [{m.from_user.first_name}](tg://user?id={m.from_user.id})\nPress /stubborn")
+    editable = await m.reply_text(f"Hello [{m.from_user.first_name}](tg://user?id={m.from_user.id})\n  👋
+
+ I Am A Bot For Download Links From Your .TXT File And Then Upload That File On Telegram So Basically If You Want To Use Me First Send Me Press /CRCHOUDHARY Command And Then Follow Few Steps..
+
+Use /stop to stop any ongoing task.")
 
 @bot.on_message(filters.command("stop"))
 async def restart_handler(_, m):
@@ -40,7 +44,7 @@ async def restart_handler(_, m):
 
 
 
-@bot.on_message(filters.command(["stubborn"]))
+@bot.on_message(filters.command(["CRCHOUDHARY"]))
 async def account_login(bot: Client, m: Message):
     editable = await m.reply_text('𝕋𝕆 ᴅᴏᴡɴʟᴏᴀᴅ ᴀ ᴛxᴛ ғɪʟᴇ 𝕤ᴇɴᴅ ʜᴇʀᴇ ⚡️')
     input: Message = await bot.listen(editable.chat.id)
@@ -188,7 +192,7 @@ async def account_login(bot: Client, m: Message):
                         time.sleep(e.x)
                         continue
                 else:
-                    Show = f"**⥥ 🄳🄾🅆🄽🄻🄾🄰🄳🄸🄽🄶⬇️⬇️... »**\n\n**📝Name »** `{name}\n❄Quality » {raw_text2}`\n\n**🔗URL »** `{url}`"
+                    Show = f"**⥥ 🄳🄾🅆🄽🄻🄾🄰🄳🄸🄽🄶⬇️⬇️..>> BY CR CHOUDHARY. »**\n\n**📝Name »** `{name}\n❄Quality » {raw_text2}`\n\n**🔗URL »** `{url}`"
                     prog = await m.reply_text(Show)
                     res_file = await helper.download_video(url, cmd, name)
                     filename = res_file
@@ -205,7 +209,7 @@ async def account_login(bot: Client, m: Message):
 
     except Exception as e:
         await m.reply_text(e)
-    await m.reply_text("🔰Done 𝔹ᴏ𝕤𝕤🔰 ")
+    await m.reply_text("🔰Done ℂℝ 𝔹ᴏ𝕤𝕤🔰 ")
 
 
 bot.run()
