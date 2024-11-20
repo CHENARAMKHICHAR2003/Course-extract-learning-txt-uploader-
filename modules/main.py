@@ -7,19 +7,12 @@ import asyncio
 import requests
 import subprocess
 
-import core as helper
-from utils import progress_bar
-from vars import api_id, api_hash, bot_token
-from aiohttp import ClientSession
-from pyromod import listen
-from subprocess import getstatusoutput
-
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from pyrogram.errors import FloodWait
-from pyrogram.errors.exceptions.bad_request_400 import StickerEmojiInvalid
-from pyrogram.types.messages_and_media import message
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from subprocess import getstatusoutput
+
+from vars import api_id, api_hash, bot_token
 
 bot = Client(
     "bot",
@@ -30,6 +23,7 @@ bot = Client(
 
 # User-specific channels
 user_channels = {}
+active_users = set()
 
 @bot.on_message(filters.command("start"))
 async def start_message(bot: Client, m: Message):
@@ -43,22 +37,38 @@ Commands:
 - `/setchannel` - Set the target channel to post files.
 - `/showchannel` - Show your current target channel.
 - `/crchoudhary` - Start downloading process.
+- `/stop` - Stop the bot process for your session.
 
-Enjoy the bot and for updates join @targetallcourse.
+Enjoy the bot, and for updates join @targetallcourse.
     """)
 
 @bot.on_message(filters.command("setchannel"))
 async def set_channel(bot: Client, m: Message):
-    await m.reply_text("Send the channel username (e.g., `@channelusername`) or ID (`-1001234567890`).")
+    await m.reply_text(
+        "Send the channel username (e.g., `@channelusername`), ID (`-1001234567890`), or invite link (e.g., `https://t.me/joinchat/...`)."
+    )
     input: Message = await bot.listen(m.chat.id)
-    channel = input.text.strip()
+    channel_input = input.text.strip()
+
     try:
-        chat = await bot.get_chat(channel)
+        # Detect if input is an invite link
+        if "t.me/" in channel_input or "joinchat" in channel_input:
+            # Join the channel using invite link
+            chat = await bot.join_chat(channel_input)
+        else:
+            # Treat as username or ID
+            chat = await bot.get_chat(channel_input)
+
+        # Check bot's privileges
         member = await bot.get_chat_member(chat.id, bot.me.id)
-        if not member.can_post_messages:
-            raise ValueError("Bot is not an admin in the channel.")
+        if not member.privileges or not member.privileges.can_post_messages:
+            raise ValueError(
+                "Bot does not have 'Post Messages' permission in this channel."
+            )
+
+        # Save the channel ID for the user
         user_channels[m.from_user.id] = chat.id
-        await m.reply_text(f"Channel successfully set: `{channel}`")
+        await m.reply_text(f"Channel successfully set: `{chat.title}`")
     except Exception as e:
         await m.reply_text(f"Error: {e}")
 
@@ -70,8 +80,17 @@ async def show_channel(bot: Client, m: Message):
     else:
         await m.reply_text("You have not set a channel yet. Use `/setchannel`.")
 
+@bot.on_message(filters.command("stop"))
+async def stop_command(bot: Client, m: Message):
+    if m.from_user.id in active_users:
+        active_users.remove(m.from_user.id)
+        await m.reply_text("✅ Bot operation has been stopped for your session.")
+    else:
+        await m.reply_text("❌ No active bot operation to stop.")
+
 @bot.on_message(filters.command(["crchoudhary"]))
 async def download_files(bot: Client, m: Message):
+    active_users.add(m.from_user.id)
     editable = await m.reply_text("Send a TXT file containing the links.")
     input: Message = await bot.listen(editable.chat.id)
     file_path = await input.download()
@@ -83,6 +102,7 @@ async def download_files(bot: Client, m: Message):
         os.remove(file_path)
     except Exception as e:
         await m.reply_text(f"Error reading file: {e}")
+        active_users.remove(m.from_user.id)
         return
 
     await editable.edit(f"**Links Found:** `{len(links)}`\nSend the starting index (default: 1).")
@@ -121,6 +141,10 @@ async def download_files(bot: Client, m: Message):
 
     count = start_index + 1
     for i in range(start_index, len(links)):
+        if m.from_user.id not in active_users:
+            await m.reply_text("❌ Process stopped by the user.")
+            break
+
         url = links[i]
         file_name = f"{str(count).zfill(3)} - {batch_name}"
         try:
@@ -144,9 +168,9 @@ async def download_files(bot: Client, m: Message):
                 await bot.send_document(target_channel, document=f"{file_name}.pdf", caption=caption)
                 os.remove(f"{file_name}.pdf")
             else:
-                caption = f"**📹 Video File**\n**Batch:** `{batch_name}`\n**Resolution:** `{resolution}p`\n**Filename:** `{file_name}.mp4`\n**Join:** @targetallcourse"
+                caption = f"**📹 Video File**\n**Batch:** `{batch_name}`\n**Resolution:** `{resolution}p`\n**Filename:** `{file_name}.mkv`\n**Join:** @targetallcourse"
                 await bot.send_video(target_channel, video=f"{file_name}.mkv", caption=caption, thumb=thumbnail)
-                os.remove(f"{file_name}.mp4")
+                os.remove(f"{file_name}.mkv")
 
             count += 1
         except Exception as e:
@@ -156,5 +180,6 @@ async def download_files(bot: Client, m: Message):
     if thumbnail:
         os.remove(thumbnail)
     await m.reply_text("✅ All files have been processed successfully.")
+    active_users.remove(m.from_user.id)
 
 bot.run()
